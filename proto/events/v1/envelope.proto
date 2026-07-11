@@ -43,11 +43,30 @@ message Envelope {
 
   // Only populated in events_enriched.
   EnrichmentMeta enrichment = 9;
+
+  // Batch-level identity JWT (HS256, per-project secret), propagated
+  // verbatim by capture from the Authorization: Bearer header. Verified by
+  // the enricher, never by capture — see docs/11.
+  string identity_token = 10;
+
+  // Set by capture from the api_key kind: public key = CLIENT,
+  // secret key = SERVER.
+  EventSource source = 11;
+}
+
+enum EventSource {
+  EVENT_SOURCE_UNSPECIFIED = 0;
+  EVENT_SOURCE_CLIENT = 1;
+  EVENT_SOURCE_SERVER = 2;
 }
 
 message EnrichmentMeta {
   Geo geo = 1;
   Device device = 2;
+
+  // Identity verification output (docs/11). Meaningful for identified-user
+  // events and identity mutations; anonymous events always pass.
+  bool verified = 3;
 }
 
 // Derived via GeoIP from the source IP. The IP itself is NOT persisted in
