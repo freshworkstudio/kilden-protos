@@ -1,1 +1,2 @@
-gen/
+# Generated code IS committed: consumers (and CI) use it without the buf
+# toolchain. Regenerate with `make generate` and commit the result.
