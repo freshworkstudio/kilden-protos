@@ -67,6 +67,19 @@ message EnrichmentMeta {
   // Identity verification output (docs/11). Meaningful for identified-user
   // events and identity mutations; anonymous events always pass.
   bool verified = 3;
+
+  // Project verification mode in effect when the enricher evaluated this
+  // event. Makes the event self-contained for consumers: verified=false
+  // under MONITOR is observe-only, under ENFORCE it must be excluded from
+  // sensitive consumers (matcher, messenger) — no project-config lookup.
+  VerificationMode verification_mode = 4;
+}
+
+enum VerificationMode {
+  VERIFICATION_MODE_UNSPECIFIED = 0;
+  VERIFICATION_MODE_OFF = 1;
+  VERIFICATION_MODE_MONITOR = 2;
+  VERIFICATION_MODE_ENFORCE = 3;
 }
 
 // Derived via GeoIP from the source IP. The IP itself is NOT persisted in
