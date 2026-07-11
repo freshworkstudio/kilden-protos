@@ -1,0 +1,10 @@
+version: v2
+clean: true
+plugins:
+  # Go → lo consume kilden-core
+  - remote: buf.build/protocolbuffers/go
+    out: gen/go
+    opt: paths=source_relative
+  # PHP → lo consume kilden-panel (para leer envelopes si hiciera falta)
+  - remote: buf.build/protocolbuffers/php
+    out: gen/php

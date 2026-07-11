@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package replay.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/freshworkstudio/kilden-protos/gen/go/replay/v1;replayv1";
+
+// ReplayPointer implements the claim-check pattern (docs/08): the rrweb blob
+// goes straight to S3 and only this ~200-byte pointer travels through Kafka.
+// Partition key of replay_pointers: session_id.
+message ReplayPointer {
+  string session_id = 1;
+  string project_id = 2;
+  string person_id = 3;
+  string distinct_id = 4;
+
+  // Chunk location in object storage:
+  // {project}/{session_id}/{chunk_index}.jsonl.zst
+  string chunk_url = 5;
+  uint32 chunk_index = 6;
+  uint64 size_bytes = 7;
+
+  // Time window covered by the chunk.
+  google.protobuf.Timestamp first_event_at = 8;
+  google.protobuf.Timestamp last_event_at = 9;
+
+  // Metadata for the session index in ClickHouse.
+  string page_url = 10;
+  bool has_error = 11; // a JS exception occurred during the chunk
+}
