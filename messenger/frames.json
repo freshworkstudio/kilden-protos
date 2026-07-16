@@ -308,11 +308,22 @@
       "name": "msg_send_conversation_id_not_uuid",
       "reason": "conversation ids are canonical uuids; a lookup key that cannot be one is refused before it reaches Postgres",
       "frame": { "type": "msg.send", "uuid": "0198a3c2-0000-7000-8000-0000000000a6", "conversation_id": "not-a-uuid", "body": "hi" }
+    },
+    {
+      "name": "typing_with_client_declared_sender",
+      "reason": "`sender` is the server's word about who is typing; a client does not get to assert it. Left open, a visitor sends sender:'agent' and any server that forwards the decoded frame — the obvious implementation — shows 'the agent is typing' in the inbox on demand. The field is outbound-only, which is why the same key is legitimate on typing_from_agent.",
+      "frame": { "type": "typing", "conversation_id": "0198a3c2-0000-7000-8000-000000000011", "sender": "agent" }
+    },
+    {
+      "name": "agent_opens_conversation",
+      "reason": "an agent never creates a conversation in 8b, so a msg.send with no conversation_id is malformed ON THE AGENT SIDE and fine on the visitor's — which is why `side` exists here: the same bytes mean different things depending on which handshake they arrive through",
+      "side": "agent",
+      "frame": { "type": "msg.send", "uuid": "0198a3c2-0000-7000-8000-0000000000a7", "body": "hi" }
     }
   ],
   "protocol_rules": [
     {
-      "note": "Well-formed frames that are refused because of WHEN they arrive or WHO sends them. Session state, not shape: exercised against the running server, not the codec.",
+      "note": "Well-formed frames refused because of WHEN they arrive, not what they look like. That is the whole distinction from invalid_frames: these MUST decode cleanly, and a receiver refuses them from session state. Exercised against the running server, not the codec — but a codec test does assert they decode, because a malformed vector here would make a server test pass for the wrong reason.",
       "name": "first_frame_not_auth",
       "reason": "on /ws the auth frame is first and mandatory; anything before it is refused with 4401",
       "side": "visitor",
@@ -322,13 +333,7 @@
       "name": "visitor_reads_foreign_conversation",
       "reason": "the conversation belongs to another person: 4401, never a silent empty page",
       "side": "visitor",
-      "frame": { "type": "history", "conversation_id": "0198a3c2-0000-7000-8000-0000009999" }
-    },
-    {
-      "name": "agent_opens_conversation",
-      "reason": "an agent never creates a conversation in 8b: msg.send without conversation_id on /agent is refused",
-      "side": "agent",
-      "frame": { "type": "msg.send", "uuid": "0198a3c2-0000-7000-8000-0000000000a7", "body": "hi" }
+      "frame": { "type": "history", "conversation_id": "0198a3c2-0000-7000-8000-000000009999" }
     }
   ],
   "error_codes": {
