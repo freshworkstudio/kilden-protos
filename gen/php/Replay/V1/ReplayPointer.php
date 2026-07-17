@@ -36,7 +36,8 @@ class ReplayPointer extends \Google\Protobuf\Internal\Message
     protected $distinct_id = '';
     /**
      * Chunk location in object storage:
-     * {project}/{session_id}/{chunk_index}.jsonl.zst
+     * {project}/{session_id}/{recording_id}/{chunk_index}.json.gz
+     * (legacy, when recording_id is empty: {project}/{session_id}/{chunk_index}.json.gz)
      *
      * Generated from protobuf field <code>string chunk_url = 5 [json_name = "chunkUrl"];</code>
      */
@@ -71,6 +72,16 @@ class ReplayPointer extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>bool has_error = 11 [json_name = "hasError"];</code>
      */
     protected $has_error = false;
+    /**
+     * One recording = one recorder start (a page load, or a new tab). The
+     * chunk_index counter restarts at 0 for every recording, while session_id
+     * survives reloads for up to 30 minutes of inactivity — so without this id
+     * a later recording of the same session would collide with (and overwrite)
+     * the earlier one's chunks. Empty on pointers from pre-recording_id SDKs.
+     *
+     * Generated from protobuf field <code>string recording_id = 12 [json_name = "recordingId"];</code>
+     */
+    protected $recording_id = '';
 
     /**
      * Constructor.
@@ -84,7 +95,8 @@ class ReplayPointer extends \Google\Protobuf\Internal\Message
      *     @type string $distinct_id
      *     @type string $chunk_url
      *           Chunk location in object storage:
-     *           {project}/{session_id}/{chunk_index}.jsonl.zst
+     *           {project}/{session_id}/{recording_id}/{chunk_index}.json.gz
+     *           (legacy, when recording_id is empty: {project}/{session_id}/{chunk_index}.json.gz)
      *     @type int $chunk_index
      *     @type int|string $size_bytes
      *     @type \Google\Protobuf\Timestamp $first_event_at
@@ -94,6 +106,12 @@ class ReplayPointer extends \Google\Protobuf\Internal\Message
      *           Metadata for the session index in ClickHouse.
      *     @type bool $has_error
      *           a JS exception occurred during the chunk
+     *     @type string $recording_id
+     *           One recording = one recorder start (a page load, or a new tab). The
+     *           chunk_index counter restarts at 0 for every recording, while session_id
+     *           survives reloads for up to 30 minutes of inactivity — so without this id
+     *           a later recording of the same session would collide with (and overwrite)
+     *           the earlier one's chunks. Empty on pointers from pre-recording_id SDKs.
      * }
      */
     public function __construct($data = NULL) {
@@ -191,7 +209,8 @@ class ReplayPointer extends \Google\Protobuf\Internal\Message
 
     /**
      * Chunk location in object storage:
-     * {project}/{session_id}/{chunk_index}.jsonl.zst
+     * {project}/{session_id}/{recording_id}/{chunk_index}.json.gz
+     * (legacy, when recording_id is empty: {project}/{session_id}/{chunk_index}.json.gz)
      *
      * Generated from protobuf field <code>string chunk_url = 5 [json_name = "chunkUrl"];</code>
      * @return string
@@ -203,7 +222,8 @@ class ReplayPointer extends \Google\Protobuf\Internal\Message
 
     /**
      * Chunk location in object storage:
-     * {project}/{session_id}/{chunk_index}.jsonl.zst
+     * {project}/{session_id}/{recording_id}/{chunk_index}.json.gz
+     * (legacy, when recording_id is empty: {project}/{session_id}/{chunk_index}.json.gz)
      *
      * Generated from protobuf field <code>string chunk_url = 5 [json_name = "chunkUrl"];</code>
      * @param string $var
@@ -374,6 +394,40 @@ class ReplayPointer extends \Google\Protobuf\Internal\Message
     public function setHasError(bool $var)
     {
         $this->has_error = $var;
+
+        return $this;
+    }
+
+    /**
+     * One recording = one recorder start (a page load, or a new tab). The
+     * chunk_index counter restarts at 0 for every recording, while session_id
+     * survives reloads for up to 30 minutes of inactivity — so without this id
+     * a later recording of the same session would collide with (and overwrite)
+     * the earlier one's chunks. Empty on pointers from pre-recording_id SDKs.
+     *
+     * Generated from protobuf field <code>string recording_id = 12 [json_name = "recordingId"];</code>
+     * @return string
+     */
+    public function getRecordingId()
+    {
+        return $this->recording_id;
+    }
+
+    /**
+     * One recording = one recorder start (a page load, or a new tab). The
+     * chunk_index counter restarts at 0 for every recording, while session_id
+     * survives reloads for up to 30 minutes of inactivity — so without this id
+     * a later recording of the same session would collide with (and overwrite)
+     * the earlier one's chunks. Empty on pointers from pre-recording_id SDKs.
+     *
+     * Generated from protobuf field <code>string recording_id = 12 [json_name = "recordingId"];</code>
+     * @param string $var
+     * @return $this
+     */
+    public function setRecordingId(string $var)
+    {
+        GPBUtil::checkString($var, true);
+        $this->recording_id = $var;
 
         return $this;
     }
