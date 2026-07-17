@@ -284,7 +284,7 @@
   },
   "invalid_frames": [
     {
-      "note": "Malformed on their face: a receiver refuses these by SHAPE, before any session state is consulted. Sequence rules live in `protocol_rules` — they are about when a frame arrives, not what it looks like.",
+      "note": "Malformed on their face: a receiver refuses these by SHAPE, before any session state is consulted, and answers 4400. Sequence rules live in `protocol_rules` — they are about when a frame arrives, not what it looks like, and they answer 4401.",
       "name": "msg_send_body_empty",
       "reason": "empty body: nothing to say, nothing to persist",
       "frame": { "type": "msg.send", "uuid": "019f6acc-6d10-70a4-80a4-0000000000a4", "conversation_id": "019f6acc-3e30-7011-8011-000000000011", "body": "" }
@@ -382,6 +382,11 @@
     }
   ],
   "error_codes": {
+    "4400": {
+      "meaning": "the frame is malformed: a known type whose shape is wrong (bad uuid, empty body, a field the sender does not get to set).",
+      "terminal": false,
+      "note": "Distinct from 4401 on purpose. 'Your JSON is wrong' and 'you are not allowed' are different bugs with different fixes, and collapsing them sends whoever is debugging to look at auth when the problem is a typo. Non-terminal: one bad frame does not cost a client its session. An UNKNOWN type is different again — that one is ignored with a warning and gets no error frame at all, because an older server must survive a newer client (see conventions.unknown_type)."
+    },
     "4401": {
       "meaning": "not authenticated for what was asked: missing/invalid/expired identity token, wrong conversation_secret, a frame before auth, or reading a conversation that is not yours.",
       "terminal": true,
