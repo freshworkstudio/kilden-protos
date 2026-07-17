@@ -16,7 +16,8 @@ message ReplayPointer {
   string distinct_id = 4;
 
   // Chunk location in object storage:
-  // {project}/{session_id}/{chunk_index}.jsonl.zst
+  // {project}/{session_id}/{recording_id}/{chunk_index}.json.gz
+  // (legacy, when recording_id is empty: {project}/{session_id}/{chunk_index}.json.gz)
   string chunk_url = 5;
   uint32 chunk_index = 6;
   uint64 size_bytes = 7;
@@ -28,4 +29,11 @@ message ReplayPointer {
   // Metadata for the session index in ClickHouse.
   string page_url = 10;
   bool has_error = 11; // a JS exception occurred during the chunk
+
+  // One recording = one recorder start (a page load, or a new tab). The
+  // chunk_index counter restarts at 0 for every recording, while session_id
+  // survives reloads for up to 30 minutes of inactivity — so without this id
+  // a later recording of the same session would collide with (and overwrite)
+  // the earlier one's chunks. Empty on pointers from pre-recording_id SDKs.
+  string recording_id = 12;
 }
