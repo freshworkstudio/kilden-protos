@@ -32,7 +32,8 @@ type ReplayPointer struct {
 	PersonId   string                 `protobuf:"bytes,3,opt,name=person_id,json=personId,proto3" json:"person_id,omitempty"`
 	DistinctId string                 `protobuf:"bytes,4,opt,name=distinct_id,json=distinctId,proto3" json:"distinct_id,omitempty"`
 	// Chunk location in object storage:
-	// {project}/{session_id}/{chunk_index}.jsonl.zst
+	// {project}/{session_id}/{recording_id}/{chunk_index}.json.gz
+	// (legacy, when recording_id is empty: {project}/{session_id}/{chunk_index}.json.gz)
 	ChunkUrl   string `protobuf:"bytes,5,opt,name=chunk_url,json=chunkUrl,proto3" json:"chunk_url,omitempty"`
 	ChunkIndex uint32 `protobuf:"varint,6,opt,name=chunk_index,json=chunkIndex,proto3" json:"chunk_index,omitempty"`
 	SizeBytes  uint64 `protobuf:"varint,7,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
@@ -40,8 +41,14 @@ type ReplayPointer struct {
 	FirstEventAt *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=first_event_at,json=firstEventAt,proto3" json:"first_event_at,omitempty"`
 	LastEventAt  *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=last_event_at,json=lastEventAt,proto3" json:"last_event_at,omitempty"`
 	// Metadata for the session index in ClickHouse.
-	PageUrl       string `protobuf:"bytes,10,opt,name=page_url,json=pageUrl,proto3" json:"page_url,omitempty"`
-	HasError      bool   `protobuf:"varint,11,opt,name=has_error,json=hasError,proto3" json:"has_error,omitempty"` // a JS exception occurred during the chunk
+	PageUrl  string `protobuf:"bytes,10,opt,name=page_url,json=pageUrl,proto3" json:"page_url,omitempty"`
+	HasError bool   `protobuf:"varint,11,opt,name=has_error,json=hasError,proto3" json:"has_error,omitempty"` // a JS exception occurred during the chunk
+	// One recording = one recorder start (a page load, or a new tab). The
+	// chunk_index counter restarts at 0 for every recording, while session_id
+	// survives reloads for up to 30 minutes of inactivity — so without this id
+	// a later recording of the same session would collide with (and overwrite)
+	// the earlier one's chunks. Empty on pointers from pre-recording_id SDKs.
+	RecordingId   string `protobuf:"bytes,12,opt,name=recording_id,json=recordingId,proto3" json:"recording_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -153,11 +160,18 @@ func (x *ReplayPointer) GetHasError() bool {
 	return false
 }
 
+func (x *ReplayPointer) GetRecordingId() string {
+	if x != nil {
+		return x.RecordingId
+	}
+	return ""
+}
+
 var File_replay_v1_pointer_proto protoreflect.FileDescriptor
 
 const file_replay_v1_pointer_proto_rawDesc = "" +
 	"\n" +
-	"\x17replay/v1/pointer.proto\x12\treplay.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa2\x03\n" +
+	"\x17replay/v1/pointer.proto\x12\treplay.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc5\x03\n" +
 	"\rReplayPointer\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -175,7 +189,8 @@ const file_replay_v1_pointer_proto_rawDesc = "" +
 	"\rlast_event_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vlastEventAt\x12\x19\n" +
 	"\bpage_url\x18\n" +
 	" \x01(\tR\apageUrl\x12\x1b\n" +
-	"\thas_error\x18\v \x01(\bR\bhasErrorBDZBgithub.com/freshworkstudio/kilden-protos/gen/go/replay/v1;replayv1b\x06proto3"
+	"\thas_error\x18\v \x01(\bR\bhasError\x12!\n" +
+	"\frecording_id\x18\f \x01(\tR\vrecordingIdBDZBgithub.com/freshworkstudio/kilden-protos/gen/go/replay/v1;replayv1b\x06proto3"
 
 var (
 	file_replay_v1_pointer_proto_rawDescOnce sync.Once
