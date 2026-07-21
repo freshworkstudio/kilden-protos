@@ -214,7 +214,13 @@ type Envelope struct {
 	IdentityToken string `protobuf:"bytes,10,opt,name=identity_token,json=identityToken,proto3" json:"identity_token,omitempty"`
 	// Set by capture from the api_key kind: public key = CLIENT,
 	// secret key = SERVER.
-	Source        EventSource `protobuf:"varint,11,opt,name=source,proto3,enum=events.v1.EventSource" json:"source,omitempty"`
+	Source EventSource `protobuf:"varint,11,opt,name=source,proto3,enum=events.v1.EventSource" json:"source,omitempty"`
+	// Source IP as seen by capture (first X-Forwarded-For hop). TRANSIENT and
+	// PII-minimized: it exists only so the enricher can derive Geo. It travels
+	// solely in events_raw (Kafka, ≤3d retention) and the enricher CLEARS it
+	// before producing events_enriched — never written to PG/CH/S3 nor carried
+	// past enrichment. See docs/03 and card c4-geoip.
+	Ip            string `protobuf:"bytes,12,opt,name=ip,proto3" json:"ip,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -326,6 +332,13 @@ func (x *Envelope) GetSource() EventSource {
 	return EventSource_EVENT_SOURCE_UNSPECIFIED
 }
 
+func (x *Envelope) GetIp() string {
+	if x != nil {
+		return x.Ip
+	}
+	return ""
+}
+
 type EnrichmentMeta struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Geo    *Geo                   `protobuf:"bytes,1,opt,name=geo,proto3" json:"geo,omitempty"`
@@ -400,14 +413,15 @@ func (x *EnrichmentMeta) GetVerificationMode() VerificationMode {
 	return VerificationMode_VERIFICATION_MODE_UNSPECIFIED
 }
 
-// Derived via GeoIP from the source IP. The IP itself is NOT persisted in
-// the envelope (PII minimization); if a project ever needs it, that is an
-// explicit future decision.
+// Derived via GeoIP from the source IP. The IP is TRANSIENT (see
+// Envelope.ip): it is dropped by the enricher and never persisted to the
+// query stores (PG/CH/S3). Only this derived Geo lives past enrichment.
 type Geo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CountryCode   string                 `protobuf:"bytes,1,opt,name=country_code,json=countryCode,proto3" json:"country_code,omitempty"` // ISO 3166-1 alpha-2, e.g. "CL"
-	Region        string                 `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
+	Region        string                 `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`                              // Subdivision level 1 name, e.g. "Región Metropolitana"
 	City          string                 `protobuf:"bytes,3,opt,name=city,proto3" json:"city,omitempty"`
+	TimeZone      string                 `protobuf:"bytes,4,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"` // IANA tz, e.g. "America/Santiago"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -459,6 +473,13 @@ func (x *Geo) GetRegion() string {
 func (x *Geo) GetCity() string {
 	if x != nil {
 		return x.City
+	}
+	return ""
+}
+
+func (x *Geo) GetTimeZone() string {
+	if x != nil {
+		return x.TimeZone
 	}
 	return ""
 }
@@ -544,7 +565,7 @@ var File_events_v1_envelope_proto protoreflect.FileDescriptor
 
 const file_events_v1_envelope_proto_rawDesc = "" +
 	"\n" +
-	"\x18events/v1/envelope.proto\x12\tevents.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xba\x03\n" +
+	"\x18events/v1/envelope.proto\x12\tevents.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xca\x03\n" +
 	"\bEnvelope\x12\x12\n" +
 	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12\x1d\n" +
 	"\n" +
@@ -564,16 +585,18 @@ const file_events_v1_envelope_proto_rawDesc = "" +
 	"enrichment\x12%\n" +
 	"\x0eidentity_token\x18\n" +
 	" \x01(\tR\ridentityToken\x12.\n" +
-	"\x06source\x18\v \x01(\x0e2\x16.events.v1.EventSourceR\x06source\"\xc3\x01\n" +
+	"\x06source\x18\v \x01(\x0e2\x16.events.v1.EventSourceR\x06source\x12\x0e\n" +
+	"\x02ip\x18\f \x01(\tR\x02ip\"\xc3\x01\n" +
 	"\x0eEnrichmentMeta\x12 \n" +
 	"\x03geo\x18\x01 \x01(\v2\x0e.events.v1.GeoR\x03geo\x12)\n" +
 	"\x06device\x18\x02 \x01(\v2\x11.events.v1.DeviceR\x06device\x12\x1a\n" +
 	"\bverified\x18\x03 \x01(\bR\bverified\x12H\n" +
-	"\x11verification_mode\x18\x04 \x01(\x0e2\x1b.events.v1.VerificationModeR\x10verificationMode\"T\n" +
+	"\x11verification_mode\x18\x04 \x01(\x0e2\x1b.events.v1.VerificationModeR\x10verificationMode\"q\n" +
 	"\x03Geo\x12!\n" +
 	"\fcountry_code\x18\x01 \x01(\tR\vcountryCode\x12\x16\n" +
 	"\x06region\x18\x02 \x01(\tR\x06region\x12\x12\n" +
-	"\x04city\x18\x03 \x01(\tR\x04city\"\xa5\x01\n" +
+	"\x04city\x18\x03 \x01(\tR\x04city\x12\x1b\n" +
+	"\ttime_zone\x18\x04 \x01(\tR\btimeZone\"\xa5\x01\n" +
 	"\x06Device\x12\x18\n" +
 	"\abrowser\x18\x01 \x01(\tR\abrowser\x12'\n" +
 	"\x0fbrowser_version\x18\x02 \x01(\tR\x0ebrowserVersion\x12\x0e\n" +
