@@ -10,9 +10,9 @@ use Google\Protobuf\Internal\GPBUtil;
 use Google\Protobuf\RepeatedField;
 
 /**
- * Derived via GeoIP from the source IP. The IP itself is NOT persisted in
- * the envelope (PII minimization); if a project ever needs it, that is an
- * explicit future decision.
+ * Derived via GeoIP from the source IP. The IP is TRANSIENT (see
+ * Envelope.ip): it is dropped by the enricher and never persisted to the
+ * query stores (PG/CH/S3). Only this derived Geo lives past enrichment.
  *
  * Generated from protobuf message <code>events.v1.Geo</code>
  */
@@ -25,6 +25,8 @@ class Geo extends \Google\Protobuf\Internal\Message
      */
     protected $country_code = '';
     /**
+     * Subdivision level 1 name, e.g. "Región Metropolitana"
+     *
      * Generated from protobuf field <code>string region = 2 [json_name = "region"];</code>
      */
     protected $region = '';
@@ -32,6 +34,12 @@ class Geo extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>string city = 3 [json_name = "city"];</code>
      */
     protected $city = '';
+    /**
+     * IANA tz, e.g. "America/Santiago"
+     *
+     * Generated from protobuf field <code>string time_zone = 4 [json_name = "timeZone"];</code>
+     */
+    protected $time_zone = '';
 
     /**
      * Constructor.
@@ -42,7 +50,10 @@ class Geo extends \Google\Protobuf\Internal\Message
      *     @type string $country_code
      *           ISO 3166-1 alpha-2, e.g. "CL"
      *     @type string $region
+     *           Subdivision level 1 name, e.g. "Región Metropolitana"
      *     @type string $city
+     *     @type string $time_zone
+     *           IANA tz, e.g. "America/Santiago"
      * }
      */
     public function __construct($data = NULL) {
@@ -77,6 +88,8 @@ class Geo extends \Google\Protobuf\Internal\Message
     }
 
     /**
+     * Subdivision level 1 name, e.g. "Región Metropolitana"
+     *
      * Generated from protobuf field <code>string region = 2 [json_name = "region"];</code>
      * @return string
      */
@@ -86,6 +99,8 @@ class Geo extends \Google\Protobuf\Internal\Message
     }
 
     /**
+     * Subdivision level 1 name, e.g. "Región Metropolitana"
+     *
      * Generated from protobuf field <code>string region = 2 [json_name = "region"];</code>
      * @param string $var
      * @return $this
@@ -116,6 +131,32 @@ class Geo extends \Google\Protobuf\Internal\Message
     {
         GPBUtil::checkString($var, true);
         $this->city = $var;
+
+        return $this;
+    }
+
+    /**
+     * IANA tz, e.g. "America/Santiago"
+     *
+     * Generated from protobuf field <code>string time_zone = 4 [json_name = "timeZone"];</code>
+     * @return string
+     */
+    public function getTimeZone()
+    {
+        return $this->time_zone;
+    }
+
+    /**
+     * IANA tz, e.g. "America/Santiago"
+     *
+     * Generated from protobuf field <code>string time_zone = 4 [json_name = "timeZone"];</code>
+     * @param string $var
+     * @return $this
+     */
+    public function setTimeZone(string $var)
+    {
+        GPBUtil::checkString($var, true);
+        $this->time_zone = $var;
 
         return $this;
     }

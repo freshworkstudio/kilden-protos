@@ -92,6 +92,16 @@ class Envelope extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>.events.v1.EventSource source = 11 [json_name = "source"];</code>
      */
     protected $source = 0;
+    /**
+     * Source IP as seen by capture (first X-Forwarded-For hop). TRANSIENT and
+     * PII-minimized: it exists only so the enricher can derive Geo. It travels
+     * solely in events_raw (Kafka, ≤3d retention) and the enricher CLEARS it
+     * before producing events_enriched — never written to PG/CH/S3 nor carried
+     * past enrichment. See docs/03 and card c4-geoip.
+     *
+     * Generated from protobuf field <code>string ip = 12 [json_name = "ip"];</code>
+     */
+    protected $ip = '';
 
     /**
      * Constructor.
@@ -128,6 +138,12 @@ class Envelope extends \Google\Protobuf\Internal\Message
      *     @type int $source
      *           Set by capture from the api_key kind: public key = CLIENT,
      *           secret key = SERVER.
+     *     @type string $ip
+     *           Source IP as seen by capture (first X-Forwarded-For hop). TRANSIENT and
+     *           PII-minimized: it exists only so the enricher can derive Geo. It travels
+     *           solely in events_raw (Kafka, ≤3d retention) and the enricher CLEARS it
+     *           before producing events_enriched — never written to PG/CH/S3 nor carried
+     *           past enrichment. See docs/03 and card c4-geoip.
      * }
      */
     public function __construct($data = NULL) {
@@ -456,6 +472,40 @@ class Envelope extends \Google\Protobuf\Internal\Message
     {
         GPBUtil::checkEnum($var, \Events\V1\EventSource::class);
         $this->source = $var;
+
+        return $this;
+    }
+
+    /**
+     * Source IP as seen by capture (first X-Forwarded-For hop). TRANSIENT and
+     * PII-minimized: it exists only so the enricher can derive Geo. It travels
+     * solely in events_raw (Kafka, ≤3d retention) and the enricher CLEARS it
+     * before producing events_enriched — never written to PG/CH/S3 nor carried
+     * past enrichment. See docs/03 and card c4-geoip.
+     *
+     * Generated from protobuf field <code>string ip = 12 [json_name = "ip"];</code>
+     * @return string
+     */
+    public function getIp()
+    {
+        return $this->ip;
+    }
+
+    /**
+     * Source IP as seen by capture (first X-Forwarded-For hop). TRANSIENT and
+     * PII-minimized: it exists only so the enricher can derive Geo. It travels
+     * solely in events_raw (Kafka, ≤3d retention) and the enricher CLEARS it
+     * before producing events_enriched — never written to PG/CH/S3 nor carried
+     * past enrichment. See docs/03 and card c4-geoip.
+     *
+     * Generated from protobuf field <code>string ip = 12 [json_name = "ip"];</code>
+     * @param string $var
+     * @return $this
+     */
+    public function setIp(string $var)
+    {
+        GPBUtil::checkString($var, true);
+        $this->ip = $var;
 
         return $this;
     }
