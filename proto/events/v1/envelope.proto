@@ -52,6 +52,13 @@ message Envelope {
   // Set by capture from the api_key kind: public key = CLIENT,
   // secret key = SERVER.
   EventSource source = 11;
+
+  // Source IP as seen by capture (first X-Forwarded-For hop). TRANSIENT and
+  // PII-minimized: it exists only so the enricher can derive Geo. It travels
+  // solely in events_raw (Kafka, ≤3d retention) and the enricher CLEARS it
+  // before producing events_enriched — never written to PG/CH/S3 nor carried
+  // past enrichment. See docs/03 and card c4-geoip.
+  string ip = 12;
 }
 
 enum EventSource {
@@ -82,13 +89,14 @@ enum VerificationMode {
   VERIFICATION_MODE_ENFORCE = 3;
 }
 
-// Derived via GeoIP from the source IP. The IP itself is NOT persisted in
-// the envelope (PII minimization); if a project ever needs it, that is an
-// explicit future decision.
+// Derived via GeoIP from the source IP. The IP is TRANSIENT (see
+// Envelope.ip): it is dropped by the enricher and never persisted to the
+// query stores (PG/CH/S3). Only this derived Geo lives past enrichment.
 message Geo {
   string country_code = 1; // ISO 3166-1 alpha-2, e.g. "CL"
-  string region = 2;
+  string region = 2;       // Subdivision level 1 name, e.g. "Región Metropolitana"
   string city = 3;
+  string time_zone = 4;    // IANA tz, e.g. "America/Santiago"
 }
 
 // Derived from User-Agent parsing in the enricher.
