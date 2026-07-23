@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.kilden.io/filters/v2/schema.json",
+  "title": "Kilden filter AST v2",
+  "description": "The single filter grammar shared by feature flags, cohorts, campaign triggers and campaign branches (docs/34). Groups are OR'd; the conditions inside a group are AND'd. An empty groups array targets everyone, which is what an unfiltered flag or trigger means. Consumers MUST treat an unknown scope, type or operator as 'never matches' — a newer panel must never make an older reader accidentally target everyone.",
+  "type": "object",
+  "required": ["version", "groups"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 2,
+      "description": "Explicit so readers can tell a v2 document from the legacy v1 shapes without guessing."
+    },
+    "groups": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/group" }
+    }
+  },
+  "$defs": {
+    "group": {
+      "type": "object",
+      "required": ["conditions"],
+      "additionalProperties": false,
+      "properties": {
+        "conditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/condition" }
+        }
+      }
+    },
+    "condition": {
+      "oneOf": [
+        { "$ref": "#/$defs/cohortCondition" },
+        { "$ref": "#/$defs/propertyCondition" }
+      ]
+    },
+    "cohortCondition": {
+      "type": "object",
+      "required": ["scope", "cohort_id"],
+      "additionalProperties": false,
+      "properties": {
+        "scope": { "const": "cohort" },
+        "cohort_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Materialized cohort membership; the reader resolves it, never the AST."
+        },
+        "negate": {
+          "type": "boolean",
+          "default": false,
+          "description": "true asks for NOT a member. A person the reader cannot resolve is not a member, so negate makes them match."
+        }
+      }
+    },
+    "propertyCondition": {
+      "type": "object",
+      "required": ["scope", "key", "type", "op"],
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "enum": ["person", "event", "group"],
+          "description": "person = the person's traits; event = the event's properties; group = a trait of the group the person belongs to (phase 5 — readers that predate it must return 'never matches')."
+        },
+        "group_type": {
+          "type": "string",
+          "description": "Immutable key of the group type. Required when scope is 'group', forbidden otherwise.",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Property name as it appears in the catalog (property_definitions.name)."
+        },
+        "type": {
+          "enum": ["string", "number", "boolean", "datetime", "list"],
+          "description": "The data type the condition was authored against — the catalog's data_type at authoring time, frozen into the condition so a later re-type never silently changes an existing filter's meaning."
+        },
+        "op": { "$ref": "#/$defs/operator" },
+        "value": {
+          "description": "Single operand. Required for every operator not listed in valuesOperators or nullaryOperators."
+        },
+        "values": {
+          "type": "array",
+          "description": "Operand list for in, between, contains_any and contains_all. 'between' carries exactly two operands and is inclusive on both ends.",
+          "minItems": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "scope": { "const": "group" } }, "required": ["scope"] },
+          "then": { "required": ["group_type"] },
+          "else": { "not": { "required": ["group_type"] } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "string" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "op": {
+                "enum": ["is", "is_not", "contains", "not_contains", "starts_with", "ends_with", "in", "is_set", "is_not_set"]
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "number" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "op": { "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "between", "is_set", "is_not_set"] }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "boolean" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "op": { "enum": ["is_true", "is_false", "is_set", "is_not_set"] }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "datetime" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "op": { "enum": ["before", "after", "between", "in_last_days", "more_than_days_ago", "is_set", "is_not_set"] }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "list" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "op": { "enum": ["contains_any", "contains_all", "is_empty", "is_set", "is_not_set"] }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "op": { "enum": ["in", "between", "contains_any", "contains_all"] } },
+            "required": ["op"]
+          },
+          "then": { "required": ["values"], "not": { "required": ["value"] } }
+        },
+        {
+          "if": {
+            "properties": { "op": { "enum": ["is_set", "is_not_set", "is_true", "is_false", "is_empty"] } },
+            "required": ["op"]
+          },
+          "then": { "not": { "anyOf": [{ "required": ["value"] }, { "required": ["values"] }] } }
+        },
+        {
+          "if": {
+            "properties": {
+              "op": {
+                "enum": ["is", "is_not", "contains", "not_contains", "starts_with", "ends_with", "eq", "neq", "gt", "gte", "lt", "lte", "before", "after", "in_last_days", "more_than_days_ago"]
+              }
+            },
+            "required": ["op"]
+          },
+          "then": { "required": ["value"], "not": { "required": ["values"] } }
+        },
+        {
+          "if": { "properties": { "op": { "const": "between" } }, "required": ["op"] },
+          "then": { "properties": { "values": { "minItems": 2, "maxItems": 2 } } }
+        }
+      ]
+    },
+    "operator": {
+      "enum": [
+        "is", "is_not", "contains", "not_contains", "starts_with", "ends_with", "in",
+        "eq", "neq", "gt", "gte", "lt", "lte", "between",
+        "is_true", "is_false",
+        "before", "after", "in_last_days", "more_than_days_ago",
+        "contains_any", "contains_all", "is_empty",
+        "is_set", "is_not_set"
+      ],
+      "description": "Case sensitivity is part of the contract: is / is_not / in compare exactly, while contains / not_contains / starts_with / ends_with are case-insensitive (they inherit the semantics of v1's icontains, which compiled to ILIKE in Postgres)."
+    }
+  }
+}

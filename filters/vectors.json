@@ -1,0 +1,582 @@
+{
+  "version": 2,
+  "note": "Frozen vectors for the filter AST v2 (docs/34, phase 3). schema.json is the shape; this file is the meaning. Four surfaces used to carry four dialects of the same idea — three Go evaluators, three PHP validators and the TypeScript mirror of the campaign builder — and they drifted because nothing pinned them together. Every implementation replays these cases: Go (internal/filters), PHP (app/Services/Filters) and TypeScript (campaign-graph.ts). Tests compare parsed structures, never bytes.",
+  "semantics": {
+    "structure": "groups are OR'd, the conditions inside a group are AND'd. An empty groups array — and a group with no conditions — targets everyone.",
+    "absence": "absence is never a value. Every value operator is false when the key is missing, including the negative ones (is_not, not_contains, neq): only is_set / is_not_set speak about presence. is_empty matches an explicit empty list, never a missing key.",
+    "case": "is / is_not / in compare exactly; contains / not_contains / starts_with / ends_with are case-insensitive.",
+    "leniency": "in-memory readers coerce the operand to the condition's declared type before comparing, because /decide receives person_properties straight from the caller and they never pass through the enricher. A value that cannot be coerced does not match (and does not match the negation either).",
+    "defensive": "unknown scope, type or operator never matches, in every direction. A newer panel must not make an older reader target everyone. Most documents in the `defensive` list are deliberately invalid against schema.json — the exception is the group-scope case, which is a perfectly valid v2 document that today's readers simply cannot resolve yet, and it is exactly the case the deploy order of phase 3 exists to protect.",
+    "now": "cases that carry a datetime operator pin context.now so the relative operators are reproducible."
+  },
+  "cases": [
+    {
+      "name": "string is matches exactly",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is", "value": "pro" }] }] },
+      "context": { "person": { "plan": "pro" } },
+      "expect": true
+    },
+    {
+      "name": "string is is case sensitive",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is", "value": "pro" }] }] },
+      "context": { "person": { "plan": "PRO" } },
+      "expect": false
+    },
+    {
+      "name": "string is on a missing key is false",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is", "value": "pro" }] }] },
+      "context": { "person": {} },
+      "expect": false
+    },
+    {
+      "name": "string is coerces a numeric trait to its text form",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "seats", "type": "string", "op": "is", "value": "5" }] }] },
+      "context": { "person": { "seats": 5 } },
+      "expect": true
+    },
+    {
+      "name": "string is coerces a boolean trait to true/false",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "trial", "type": "string", "op": "is", "value": "true" }] }] },
+      "context": { "person": { "trial": true } },
+      "expect": true
+    },
+    {
+      "name": "string is_not matches a different value",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is_not", "value": "pro" }] }] },
+      "context": { "person": { "plan": "free" } },
+      "expect": true
+    },
+    {
+      "name": "string is_not on a missing key is false (absence is not a value)",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is_not", "value": "pro" }] }] },
+      "context": { "person": {} },
+      "expect": false
+    },
+    {
+      "name": "string contains is case-insensitive",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "email", "type": "string", "op": "contains", "value": "EXAMPLE" }] }] },
+      "context": { "person": { "email": "ada@example.com" } },
+      "expect": true
+    },
+    {
+      "name": "string not_contains matches when the substring is absent",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "email", "type": "string", "op": "not_contains", "value": "gmail" }] }] },
+      "context": { "person": { "email": "ada@example.com" } },
+      "expect": true
+    },
+    {
+      "name": "string not_contains on a missing key is false",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "email", "type": "string", "op": "not_contains", "value": "gmail" }] }] },
+      "context": { "person": {} },
+      "expect": false
+    },
+    {
+      "name": "string starts_with is case-insensitive",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "email", "type": "string", "op": "starts_with", "value": "ADA@" }] }] },
+      "context": { "person": { "email": "ada@example.com" } },
+      "expect": true
+    },
+    {
+      "name": "string ends_with is case-insensitive",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "email", "type": "string", "op": "ends_with", "value": ".COM" }] }] },
+      "context": { "person": { "email": "ada@example.com" } },
+      "expect": true
+    },
+    {
+      "name": "string ends_with does not match a prefix",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "email", "type": "string", "op": "ends_with", "value": "ada" }] }] },
+      "context": { "person": { "email": "ada@example.com" } },
+      "expect": false
+    },
+    {
+      "name": "string in matches one of the operands exactly",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "country", "type": "string", "op": "in", "values": ["CL", "AR", "PE"] }] }] },
+      "context": { "person": { "country": "AR" } },
+      "expect": true
+    },
+    {
+      "name": "string in is case sensitive",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "country", "type": "string", "op": "in", "values": ["CL", "AR"] }] }] },
+      "context": { "person": { "country": "ar" } },
+      "expect": false
+    },
+    {
+      "name": "is_set matches a present key",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is_set" }] }] },
+      "context": { "person": { "plan": "free" } },
+      "expect": true
+    },
+    {
+      "name": "is_set matches a present empty string (empty is a value)",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is_set" }] }] },
+      "context": { "person": { "plan": "" } },
+      "expect": true
+    },
+    {
+      "name": "is_set does not match an explicit null",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is_set" }] }] },
+      "context": { "person": { "plan": null } },
+      "expect": false
+    },
+    {
+      "name": "is_not_set matches a missing key",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is_not_set" }] }] },
+      "context": { "person": {} },
+      "expect": true
+    },
+    {
+      "name": "is_not_set matches an explicit null",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is_not_set" }] }] },
+      "context": { "person": { "plan": null } },
+      "expect": true
+    },
+    {
+      "name": "is_not_set does not match a present key",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is_not_set" }] }] },
+      "context": { "person": { "plan": "free" } },
+      "expect": false
+    },
+    {
+      "name": "number eq compares numerically",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "seats", "type": "number", "op": "eq", "value": 10 }] }] },
+      "context": { "person": { "seats": 10 } },
+      "expect": true
+    },
+    {
+      "name": "number eq coerces a numeric string trait",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "seats", "type": "number", "op": "eq", "value": 10 }] }] },
+      "context": { "person": { "seats": "10" } },
+      "expect": true
+    },
+    {
+      "name": "number eq ignores leading zeros that a text comparison would break on",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "seats", "type": "number", "op": "eq", "value": 10 }] }] },
+      "context": { "person": { "seats": "010" } },
+      "expect": true
+    },
+    {
+      "name": "number eq does not match a non-numeric trait",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "seats", "type": "number", "op": "eq", "value": 10 }] }] },
+      "context": { "person": { "seats": "ten" } },
+      "expect": false
+    },
+    {
+      "name": "number neq does not match a non-numeric trait either (incoercible is not a comparison)",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "seats", "type": "number", "op": "neq", "value": 10 }] }] },
+      "context": { "person": { "seats": "ten" } },
+      "expect": false
+    },
+    {
+      "name": "number neq matches a different number",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "seats", "type": "number", "op": "neq", "value": 10 }] }] },
+      "context": { "person": { "seats": 3 } },
+      "expect": true
+    },
+    {
+      "name": "number gt is strict",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "mrr", "type": "number", "op": "gt", "value": 100 }] }] },
+      "context": { "person": { "mrr": 100 } },
+      "expect": false
+    },
+    {
+      "name": "number gte includes the boundary",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "mrr", "type": "number", "op": "gte", "value": 100 }] }] },
+      "context": { "person": { "mrr": 100 } },
+      "expect": true
+    },
+    {
+      "name": "number lt compares numerically, not lexicographically",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "mrr", "type": "number", "op": "lt", "value": 100 }] }] },
+      "context": { "person": { "mrr": 9 } },
+      "expect": true
+    },
+    {
+      "name": "number lte includes the boundary",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "mrr", "type": "number", "op": "lte", "value": 100 }] }] },
+      "context": { "person": { "mrr": 100 } },
+      "expect": true
+    },
+    {
+      "name": "number between is inclusive on the lower bound",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "mrr", "type": "number", "op": "between", "values": [10, 100] }] }] },
+      "context": { "person": { "mrr": 10 } },
+      "expect": true
+    },
+    {
+      "name": "number between is inclusive on the upper bound",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "mrr", "type": "number", "op": "between", "values": [10, 100] }] }] },
+      "context": { "person": { "mrr": 100 } },
+      "expect": true
+    },
+    {
+      "name": "number between excludes outside the range",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "mrr", "type": "number", "op": "between", "values": [10, 100] }] }] },
+      "context": { "person": { "mrr": 101 } },
+      "expect": false
+    },
+    {
+      "name": "number eq on a missing key is false",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "mrr", "type": "number", "op": "eq", "value": 0 }] }] },
+      "context": { "person": {} },
+      "expect": false
+    },
+    {
+      "name": "number handles a float trait",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "mrr", "type": "number", "op": "gt", "value": 10.5 }] }] },
+      "context": { "person": { "mrr": 10.51 } },
+      "expect": true
+    },
+    {
+      "name": "boolean is_true matches a real true",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "trial", "type": "boolean", "op": "is_true" }] }] },
+      "context": { "person": { "trial": true } },
+      "expect": true
+    },
+    {
+      "name": "boolean is_true coerces the string \"true\"",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "trial", "type": "boolean", "op": "is_true" }] }] },
+      "context": { "person": { "trial": "true" } },
+      "expect": true
+    },
+    {
+      "name": "boolean is_true coerces the number 1",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "trial", "type": "boolean", "op": "is_true" }] }] },
+      "context": { "person": { "trial": 1 } },
+      "expect": true
+    },
+    {
+      "name": "boolean is_false matches a real false",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "trial", "type": "boolean", "op": "is_false" }] }] },
+      "context": { "person": { "trial": false } },
+      "expect": true
+    },
+    {
+      "name": "boolean is_false on a missing key is false (absence is not false)",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "trial", "type": "boolean", "op": "is_false" }] }] },
+      "context": { "person": {} },
+      "expect": false
+    },
+    {
+      "name": "boolean is_true does not match an incoercible value",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "trial", "type": "boolean", "op": "is_true" }] }] },
+      "context": { "person": { "trial": "yes please" } },
+      "expect": false
+    },
+    {
+      "name": "datetime before compares instants, not text",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "signed_up_at", "type": "datetime", "op": "before", "value": "2026-01-01T00:00:00Z" }] }] },
+      "context": { "person": { "signed_up_at": "2025-12-31T23:59:59Z" }, "now": "2026-07-01T12:00:00Z" },
+      "expect": true
+    },
+    {
+      "name": "datetime before is strict on the boundary",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "signed_up_at", "type": "datetime", "op": "before", "value": "2026-01-01T00:00:00Z" }] }] },
+      "context": { "person": { "signed_up_at": "2026-01-01T00:00:00Z" }, "now": "2026-07-01T12:00:00Z" },
+      "expect": false
+    },
+    {
+      "name": "datetime after compares across offsets",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "signed_up_at", "type": "datetime", "op": "after", "value": "2026-01-01T00:00:00Z" }] }] },
+      "context": { "person": { "signed_up_at": "2026-01-01T01:00:00+00:30" }, "now": "2026-07-01T12:00:00Z" },
+      "expect": true
+    },
+    {
+      "name": "datetime between is inclusive on both bounds",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "signed_up_at", "type": "datetime", "op": "between", "values": ["2026-01-01T00:00:00Z", "2026-02-01T00:00:00Z"] }] }] },
+      "context": { "person": { "signed_up_at": "2026-02-01T00:00:00Z" }, "now": "2026-07-01T12:00:00Z" },
+      "expect": true
+    },
+    {
+      "name": "datetime in_last_days counts back from now",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "last_seen_at", "type": "datetime", "op": "in_last_days", "value": 7 }] }] },
+      "context": { "person": { "last_seen_at": "2026-06-28T12:00:00Z" }, "now": "2026-07-01T12:00:00Z" },
+      "expect": true
+    },
+    {
+      "name": "datetime in_last_days excludes older than the window",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "last_seen_at", "type": "datetime", "op": "in_last_days", "value": 7 }] }] },
+      "context": { "person": { "last_seen_at": "2026-06-20T12:00:00Z" }, "now": "2026-07-01T12:00:00Z" },
+      "expect": false
+    },
+    {
+      "name": "datetime in_last_days does not match the future",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "last_seen_at", "type": "datetime", "op": "in_last_days", "value": 7 }] }] },
+      "context": { "person": { "last_seen_at": "2026-07-02T12:00:00Z" }, "now": "2026-07-01T12:00:00Z" },
+      "expect": false
+    },
+    {
+      "name": "datetime more_than_days_ago is the complement of the window",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "last_seen_at", "type": "datetime", "op": "more_than_days_ago", "value": 30 }] }] },
+      "context": { "person": { "last_seen_at": "2026-05-01T12:00:00Z" }, "now": "2026-07-01T12:00:00Z" },
+      "expect": true
+    },
+    {
+      "name": "datetime accepts an epoch-seconds number",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "signed_up_at", "type": "datetime", "op": "after", "value": "2026-01-01T00:00:00Z" }] }] },
+      "context": { "person": { "signed_up_at": 1783000000 }, "now": "2026-07-01T12:00:00Z" },
+      "expect": true
+    },
+    {
+      "name": "datetime does not match an unparsable value",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "signed_up_at", "type": "datetime", "op": "before", "value": "2026-01-01T00:00:00Z" }] }] },
+      "context": { "person": { "signed_up_at": "last tuesday" }, "now": "2026-07-01T12:00:00Z" },
+      "expect": false
+    },
+    {
+      "name": "list contains_any matches one element",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "tags", "type": "list", "op": "contains_any", "values": ["vip", "beta"] }] }] },
+      "context": { "person": { "tags": ["beta", "churn_risk"] } },
+      "expect": true
+    },
+    {
+      "name": "list contains_any compares elements as text",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "codes", "type": "list", "op": "contains_any", "values": ["2"] }] }] },
+      "context": { "person": { "codes": [1, 2, 3] } },
+      "expect": true
+    },
+    {
+      "name": "list contains_all needs every element",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "tags", "type": "list", "op": "contains_all", "values": ["vip", "beta"] }] }] },
+      "context": { "person": { "tags": ["beta"] } },
+      "expect": false
+    },
+    {
+      "name": "list contains_all matches a superset",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "tags", "type": "list", "op": "contains_all", "values": ["vip", "beta"] }] }] },
+      "context": { "person": { "tags": ["beta", "vip", "eu"] } },
+      "expect": true
+    },
+    {
+      "name": "list is_empty matches an explicit empty list",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "tags", "type": "list", "op": "is_empty" }] }] },
+      "context": { "person": { "tags": [] } },
+      "expect": true
+    },
+    {
+      "name": "list is_empty does not match a missing key",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "tags", "type": "list", "op": "is_empty" }] }] },
+      "context": { "person": {} },
+      "expect": false
+    },
+    {
+      "name": "list operators do not match a scalar",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "tags", "type": "list", "op": "contains_any", "values": ["vip"] }] }] },
+      "context": { "person": { "tags": "vip" } },
+      "expect": false
+    },
+    {
+      "name": "list is_set matches an empty list (present, just empty)",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "tags", "type": "list", "op": "is_set" }] }] },
+      "context": { "person": { "tags": [] } },
+      "expect": true
+    },
+    {
+      "name": "event scope reads the event properties, not the traits",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "event", "key": "plan", "type": "string", "op": "is", "value": "pro" }] }] },
+      "context": { "person": { "plan": "free" }, "event": { "plan": "pro" } },
+      "expect": true
+    },
+    {
+      "name": "person scope does not fall back to the event properties",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is", "value": "pro" }] }] },
+      "context": { "person": {}, "event": { "plan": "pro" } },
+      "expect": false
+    },
+    {
+      "name": "cohort membership matches",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "cohort", "cohort_id": "0190a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b" }] }] },
+      "context": { "person": {}, "cohorts": ["0190a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b"] },
+      "expect": true
+    },
+    {
+      "name": "cohort non-membership does not match",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "cohort", "cohort_id": "0190a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b" }] }] },
+      "context": { "person": {}, "cohorts": [] },
+      "expect": false
+    },
+    {
+      "name": "negated cohort matches a non-member",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "cohort", "cohort_id": "0190a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b", "negate": true }] }] },
+      "context": { "person": {}, "cohorts": [] },
+      "expect": true
+    },
+    {
+      "name": "no groups targets everyone",
+      "filter": { "version": 2, "groups": [] },
+      "context": { "person": {} },
+      "expect": true
+    },
+    {
+      "name": "a group with no conditions targets everyone",
+      "filter": { "version": 2, "groups": [{ "conditions": [] }] },
+      "context": { "person": {} },
+      "expect": true
+    },
+    {
+      "name": "conditions inside a group are AND'd",
+      "filter": {
+        "version": 2,
+        "groups": [{ "conditions": [
+          { "scope": "person", "key": "plan", "type": "string", "op": "is", "value": "pro" },
+          { "scope": "person", "key": "seats", "type": "number", "op": "gte", "value": 5 }
+        ] }]
+      },
+      "context": { "person": { "plan": "pro", "seats": 3 } },
+      "expect": false
+    },
+    {
+      "name": "groups are OR'd",
+      "filter": {
+        "version": 2,
+        "groups": [
+          { "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is", "value": "enterprise" }] },
+          { "conditions": [{ "scope": "person", "key": "seats", "type": "number", "op": "gte", "value": 5 }] }
+        ]
+      },
+      "context": { "person": { "plan": "pro", "seats": 9 } },
+      "expect": true
+    },
+    {
+      "name": "every group failing fails the filter",
+      "filter": {
+        "version": 2,
+        "groups": [
+          { "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is", "value": "enterprise" }] },
+          { "conditions": [{ "scope": "person", "key": "seats", "type": "number", "op": "gte", "value": 50 }] }
+        ]
+      },
+      "context": { "person": { "plan": "pro", "seats": 9 } },
+      "expect": false
+    }
+  ],
+  "defensive": [
+    {
+      "name": "an unknown operator never matches",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "sounds_like", "value": "pro" }] }] },
+      "context": { "person": { "plan": "pro" } },
+      "expect": false
+    },
+    {
+      "name": "an unknown operator does not match by negation either",
+      "filter": {
+        "version": 2,
+        "groups": [
+          { "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "sounds_like", "value": "pro" }] },
+          { "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is", "value": "free" }] }
+        ]
+      },
+      "context": { "person": { "plan": "pro" } },
+      "expect": false
+    },
+    {
+      "name": "an unknown scope never matches",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "account", "key": "plan", "type": "string", "op": "is", "value": "pro" }] }] },
+      "context": { "person": { "plan": "pro" } },
+      "expect": false
+    },
+    {
+      "name": "an unknown type never matches",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "money", "op": "is", "value": "pro" }] }] },
+      "context": { "person": { "plan": "pro" } },
+      "expect": false
+    },
+    {
+      "name": "an operator that does not belong to the type never matches",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "seats", "type": "number", "op": "contains", "value": "1" }] }] },
+      "context": { "person": { "seats": 10 } },
+      "expect": false
+    },
+    {
+      "name": "group scope never matches until group membership exists (phase 5)",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "group", "group_type": "company", "key": "plan", "type": "string", "op": "is", "value": "pro" }] }] },
+      "context": { "person": { "plan": "pro" } },
+      "expect": false
+    },
+    {
+      "name": "between with a single operand never matches",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "mrr", "type": "number", "op": "between", "values": [10] }] }] },
+      "context": { "person": { "mrr": 10 } },
+      "expect": false
+    },
+    {
+      "name": "in with no operands never matches",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "country", "type": "string", "op": "in", "values": [] }] }] },
+      "context": { "person": { "country": "CL" } },
+      "expect": false
+    }
+  ],
+  "legacy": [
+    {
+      "name": "flags: exact on a person trait becomes a string is",
+      "default_scope": "person",
+      "input": { "groups": [{ "conditions": [{ "type": "person", "property": "plan", "operator": "exact", "value": "pro" }] }] },
+      "normalized": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is", "value": "pro" }] }] }
+    },
+    {
+      "name": "flags: icontains becomes contains (case-insensitive, same as ILIKE)",
+      "default_scope": "person",
+      "input": { "groups": [{ "conditions": [{ "type": "person", "property": "email", "operator": "icontains", "value": "example" }] }] },
+      "normalized": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "email", "type": "string", "op": "contains", "value": "example" }] }] }
+    },
+    {
+      "name": "flags: a missing operator defaults to exact, as v1 readers did",
+      "default_scope": "person",
+      "input": { "groups": [{ "conditions": [{ "type": "person", "property": "plan", "value": "pro" }] }] },
+      "normalized": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is", "value": "pro" }] }] }
+    },
+    {
+      "name": "flags: a cohort condition keeps its id",
+      "default_scope": "person",
+      "input": { "groups": [{ "conditions": [{ "type": "cohort", "cohort_id": "0190a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b" }] }] },
+      "normalized": { "version": 2, "groups": [{ "conditions": [{ "scope": "cohort", "cohort_id": "0190a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2b" }] }] }
+    },
+    {
+      "name": "flags: a numeric-looking value is NOT re-typed (re-typing would change flag results in silence)",
+      "default_scope": "person",
+      "input": { "groups": [{ "conditions": [{ "type": "person", "property": "seats", "operator": "exact", "value": "10" }] }] },
+      "normalized": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "seats", "type": "string", "op": "is", "value": "10" }] }] }
+    },
+    {
+      "name": "flags: an empty filter document targets everyone",
+      "default_scope": "person",
+      "input": {},
+      "normalized": { "version": 2, "groups": [] }
+    },
+    {
+      "name": "campaign trigger: a bare condition array becomes one AND group of event conditions",
+      "default_scope": "event",
+      "input": [{ "property": "plan", "operator": "exact", "value": "pro" }, { "property": "source", "operator": "icontains", "value": "ads" }],
+      "normalized": {
+        "version": 2,
+        "groups": [{ "conditions": [
+          { "scope": "event", "key": "plan", "type": "string", "op": "is", "value": "pro" },
+          { "scope": "event", "key": "source", "type": "string", "op": "contains", "value": "ads" }
+        ] }]
+      }
+    },
+    {
+      "name": "campaign trigger: an empty array targets every occurrence of the event",
+      "default_scope": "event",
+      "input": [],
+      "normalized": { "version": 2, "groups": [] }
+    },
+    {
+      "name": "campaign branch: groups of person conditions carry over unchanged in shape",
+      "default_scope": "person",
+      "input": { "groups": [
+        { "conditions": [{ "type": "person", "property": "plan", "operator": "exact", "value": "pro" }] },
+        { "conditions": [{ "type": "cohort", "cohort_id": "0190a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2c" }] }
+      ] },
+      "normalized": { "version": 2, "groups": [
+        { "conditions": [{ "scope": "person", "key": "plan", "type": "string", "op": "is", "value": "pro" }] },
+        { "conditions": [{ "scope": "cohort", "cohort_id": "0190a1b2-c3d4-7e5f-8a6b-7c8d9e0f1a2c" }] }
+      ] }
+    },
+    {
+      "name": "an already-v2 document round-trips untouched",
+      "default_scope": "person",
+      "input": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "mrr", "type": "number", "op": "gte", "value": 100 }] }] },
+      "normalized": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "mrr", "type": "number", "op": "gte", "value": 100 }] }] }
+    }
+  ]
+}
