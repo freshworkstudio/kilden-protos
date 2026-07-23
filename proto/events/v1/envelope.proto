@@ -80,6 +80,19 @@ message EnrichmentMeta {
   // under MONITOR is observe-only, under ENFORCE it must be excluded from
   // sensitive consumers (matcher, messenger) — no project-config lookup.
   VerificationMode verification_mode = 4;
+
+  // Per-key data-type hints for the (already-normalized) properties JSON,
+  // produced by the same catalog lookup the enricher used to coerce this
+  // event (docs/34). Maps property key → one of "s" (string), "n" (number),
+  // "b" (boolean), "d" (datetime), "l" (list). writer-ch reads these to route
+  // each value into the typed ClickHouse maps without a catalog of its own
+  // (avoiding a second read that could disagree across the 30s cache refresh),
+  // and it disambiguates datetime, which is indistinguishable from string in
+  // JSON. This is a hint map inside the enrichment meta, NOT a typing of
+  // `properties` itself (rule 1): the `properties` field stays opaque JSON;
+  // the envelope just carries the enricher's verdict. Keys absent from the
+  // map (or whose value was incoercible) are left in `properties` only.
+  map<string, string> prop_types = 5;
 }
 
 enum VerificationMode {
