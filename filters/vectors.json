@@ -281,6 +281,12 @@
       "expect": true
     },
     {
+      "name": "datetime after is strict on the boundary",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "signed_up_at", "type": "datetime", "op": "after", "value": "2026-01-01T00:00:00Z" }] }] },
+      "context": { "person": { "signed_up_at": "2026-01-01T00:00:00Z" }, "now": "2026-07-01T12:00:00Z" },
+      "expect": false
+    },
+    {
       "name": "datetime between is inclusive on both bounds",
       "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "signed_up_at", "type": "datetime", "op": "between", "values": ["2026-01-01T00:00:00Z", "2026-02-01T00:00:00Z"] }] }] },
       "context": { "person": { "signed_up_at": "2026-02-01T00:00:00Z" }, "now": "2026-07-01T12:00:00Z" },
@@ -351,6 +357,12 @@
       "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "tags", "type": "list", "op": "is_empty" }] }] },
       "context": { "person": { "tags": [] } },
       "expect": true
+    },
+    {
+      "name": "list is_empty does not match a populated list",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "tags", "type": "list", "op": "is_empty" }] }] },
+      "context": { "person": { "tags": ["vip"] } },
+      "expect": false
     },
     {
       "name": "list is_empty does not match a missing key",
@@ -499,6 +511,18 @@
       "expect": false
     },
     {
+      "name": "contains_all with no operands never matches (an empty AND is not vacuously true here)",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "tags", "type": "list", "op": "contains_all", "values": [] }] }] },
+      "context": { "person": { "tags": ["vip"] } },
+      "expect": false
+    },
+    {
+      "name": "contains_any with no operands never matches",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "tags", "type": "list", "op": "contains_any", "values": [] }] }] },
+      "context": { "person": { "tags": ["vip"] } },
+      "expect": false
+    },
+    {
       "name": "in with no operands never matches",
       "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "country", "type": "string", "op": "in", "values": [] }] }] },
       "context": { "person": { "country": "CL" } },
@@ -553,6 +577,18 @@
           { "scope": "event", "key": "source", "type": "string", "op": "contains", "value": "ads" }
         ] }]
       }
+    },
+    {
+      "name": "campaign trigger: the stored {conditions: []} object is the same AND group",
+      "default_scope": "event",
+      "input": { "conditions": [{ "property": "total", "operator": "exact", "value": "9" }] },
+      "normalized": { "version": 2, "groups": [{ "conditions": [{ "scope": "event", "key": "total", "type": "string", "op": "is", "value": "9" }] }] }
+    },
+    {
+      "name": "campaign trigger: an empty conditions list targets every occurrence",
+      "default_scope": "event",
+      "input": { "conditions": [] },
+      "normalized": { "version": 2, "groups": [] }
     },
     {
       "name": "campaign trigger: an empty array targets every occurrence of the event",
