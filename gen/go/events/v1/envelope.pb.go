@@ -359,9 +359,9 @@ type EnrichmentMeta struct {
 	// (avoiding a second read that could disagree across the 30s cache refresh),
 	// and it disambiguates datetime, which is indistinguishable from string in
 	// JSON. This is a hint map inside the enrichment meta, NOT a typing of
-	// `properties` itself (rule 1): the letter stays opaque JSON; the envelope
-	// just carries the enricher's verdict. Keys absent from the map (or whose
-	// value was incoercible) are left in `properties` only.
+	// `properties` itself (rule 1): the `properties` field stays opaque JSON;
+	// the envelope just carries the enricher's verdict. Keys absent from the
+	// map (or whose value was incoercible) are left in `properties` only.
 	PropTypes     map[string]string `protobuf:"bytes,5,rep,name=prop_types,json=propTypes,proto3" json:"prop_types,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
