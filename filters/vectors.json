@@ -59,6 +59,24 @@
       "expect": true
     },
     {
+      "name": "string contains treats a percent sign in the needle as text",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "coupon", "type": "string", "op": "contains", "value": "50%" }] }] },
+      "context": { "person": { "coupon": "50% off everything" } },
+      "expect": true
+    },
+    {
+      "name": "string contains does not let a percent sign act as a wildcard",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "coupon", "type": "string", "op": "contains", "value": "50%" }] }] },
+      "context": { "person": { "coupon": "500 off everything" } },
+      "expect": false
+    },
+    {
+      "name": "string starts_with does not let an underscore act as a single-character wildcard",
+      "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "code", "type": "string", "op": "starts_with", "value": "a_b" }] }] },
+      "context": { "person": { "code": "axb-123" } },
+      "expect": false
+    },
+    {
       "name": "string not_contains matches when the substring is absent",
       "filter": { "version": 2, "groups": [{ "conditions": [{ "scope": "person", "key": "email", "type": "string", "op": "not_contains", "value": "gmail" }] }] },
       "context": { "person": { "email": "ada@example.com" } },
