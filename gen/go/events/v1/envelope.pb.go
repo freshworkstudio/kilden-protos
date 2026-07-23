@@ -351,8 +351,20 @@ type EnrichmentMeta struct {
 	// under MONITOR is observe-only, under ENFORCE it must be excluded from
 	// sensitive consumers (matcher, messenger) — no project-config lookup.
 	VerificationMode VerificationMode `protobuf:"varint,4,opt,name=verification_mode,json=verificationMode,proto3,enum=events.v1.VerificationMode" json:"verification_mode,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Per-key data-type hints for the (already-normalized) properties JSON,
+	// produced by the same catalog lookup the enricher used to coerce this
+	// event (docs/34). Maps property key → one of "s" (string), "n" (number),
+	// "b" (boolean), "d" (datetime), "l" (list). writer-ch reads these to route
+	// each value into the typed ClickHouse maps without a catalog of its own
+	// (avoiding a second read that could disagree across the 30s cache refresh),
+	// and it disambiguates datetime, which is indistinguishable from string in
+	// JSON. This is a hint map inside the enrichment meta, NOT a typing of
+	// `properties` itself (rule 1): the letter stays opaque JSON; the envelope
+	// just carries the enricher's verdict. Keys absent from the map (or whose
+	// value was incoercible) are left in `properties` only.
+	PropTypes     map[string]string `protobuf:"bytes,5,rep,name=prop_types,json=propTypes,proto3" json:"prop_types,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EnrichmentMeta) Reset() {
@@ -411,6 +423,13 @@ func (x *EnrichmentMeta) GetVerificationMode() VerificationMode {
 		return x.VerificationMode
 	}
 	return VerificationMode_VERIFICATION_MODE_UNSPECIFIED
+}
+
+func (x *EnrichmentMeta) GetPropTypes() map[string]string {
+	if x != nil {
+		return x.PropTypes
+	}
+	return nil
 }
 
 // Derived via GeoIP from the source IP. The IP is TRANSIENT (see
@@ -586,12 +605,17 @@ const file_events_v1_envelope_proto_rawDesc = "" +
 	"\x0eidentity_token\x18\n" +
 	" \x01(\tR\ridentityToken\x12.\n" +
 	"\x06source\x18\v \x01(\x0e2\x16.events.v1.EventSourceR\x06source\x12\x0e\n" +
-	"\x02ip\x18\f \x01(\tR\x02ip\"\xc3\x01\n" +
+	"\x02ip\x18\f \x01(\tR\x02ip\"\xca\x02\n" +
 	"\x0eEnrichmentMeta\x12 \n" +
 	"\x03geo\x18\x01 \x01(\v2\x0e.events.v1.GeoR\x03geo\x12)\n" +
 	"\x06device\x18\x02 \x01(\v2\x11.events.v1.DeviceR\x06device\x12\x1a\n" +
 	"\bverified\x18\x03 \x01(\bR\bverified\x12H\n" +
-	"\x11verification_mode\x18\x04 \x01(\x0e2\x1b.events.v1.VerificationModeR\x10verificationMode\"q\n" +
+	"\x11verification_mode\x18\x04 \x01(\x0e2\x1b.events.v1.VerificationModeR\x10verificationMode\x12G\n" +
+	"\n" +
+	"prop_types\x18\x05 \x03(\v2(.events.v1.EnrichmentMeta.PropTypesEntryR\tpropTypes\x1a<\n" +
+	"\x0ePropTypesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"q\n" +
 	"\x03Geo\x12!\n" +
 	"\fcountry_code\x18\x01 \x01(\tR\vcountryCode\x12\x16\n" +
 	"\x06region\x18\x02 \x01(\tR\x06region\x12\x12\n" +
@@ -634,7 +658,7 @@ func file_events_v1_envelope_proto_rawDescGZIP() []byte {
 }
 
 var file_events_v1_envelope_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_events_v1_envelope_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_events_v1_envelope_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_events_v1_envelope_proto_goTypes = []any{
 	(EventSource)(0),              // 0: events.v1.EventSource
 	(VerificationMode)(0),         // 1: events.v1.VerificationMode
@@ -643,22 +667,24 @@ var file_events_v1_envelope_proto_goTypes = []any{
 	(*EnrichmentMeta)(nil),        // 4: events.v1.EnrichmentMeta
 	(*Geo)(nil),                   // 5: events.v1.Geo
 	(*Device)(nil),                // 6: events.v1.Device
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	nil,                           // 7: events.v1.EnrichmentMeta.PropTypesEntry
+	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
 }
 var file_events_v1_envelope_proto_depIdxs = []int32{
-	7, // 0: events.v1.Envelope.timestamp:type_name -> google.protobuf.Timestamp
-	7, // 1: events.v1.Envelope.received_at:type_name -> google.protobuf.Timestamp
+	8, // 0: events.v1.Envelope.timestamp:type_name -> google.protobuf.Timestamp
+	8, // 1: events.v1.Envelope.received_at:type_name -> google.protobuf.Timestamp
 	4, // 2: events.v1.Envelope.enrichment:type_name -> events.v1.EnrichmentMeta
 	0, // 3: events.v1.Envelope.source:type_name -> events.v1.EventSource
 	5, // 4: events.v1.EnrichmentMeta.geo:type_name -> events.v1.Geo
 	6, // 5: events.v1.EnrichmentMeta.device:type_name -> events.v1.Device
 	1, // 6: events.v1.EnrichmentMeta.verification_mode:type_name -> events.v1.VerificationMode
-	2, // 7: events.v1.Device.type:type_name -> events.v1.DeviceType
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	7, // 7: events.v1.EnrichmentMeta.prop_types:type_name -> events.v1.EnrichmentMeta.PropTypesEntry
+	2, // 8: events.v1.Device.type:type_name -> events.v1.DeviceType
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_events_v1_envelope_proto_init() }
@@ -672,7 +698,7 @@ func file_events_v1_envelope_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_events_v1_envelope_proto_rawDesc), len(file_events_v1_envelope_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

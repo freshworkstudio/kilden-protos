@@ -38,6 +38,22 @@ class EnrichmentMeta extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>.events.v1.VerificationMode verification_mode = 4 [json_name = "verificationMode"];</code>
      */
     protected $verification_mode = 0;
+    /**
+     * Per-key data-type hints for the (already-normalized) properties JSON,
+     * produced by the same catalog lookup the enricher used to coerce this
+     * event (docs/34). Maps property key → one of "s" (string), "n" (number),
+     * "b" (boolean), "d" (datetime), "l" (list). writer-ch reads these to route
+     * each value into the typed ClickHouse maps without a catalog of its own
+     * (avoiding a second read that could disagree across the 30s cache refresh),
+     * and it disambiguates datetime, which is indistinguishable from string in
+     * JSON. This is a hint map inside the enrichment meta, NOT a typing of
+     * `properties` itself (rule 1): the letter stays opaque JSON; the envelope
+     * just carries the enricher's verdict. Keys absent from the map (or whose
+     * value was incoercible) are left in `properties` only.
+     *
+     * Generated from protobuf field <code>map<string, string> prop_types = 5 [json_name = "propTypes"];</code>
+     */
+    private $prop_types;
 
     /**
      * Constructor.
@@ -55,6 +71,18 @@ class EnrichmentMeta extends \Google\Protobuf\Internal\Message
      *           event. Makes the event self-contained for consumers: verified=false
      *           under MONITOR is observe-only, under ENFORCE it must be excluded from
      *           sensitive consumers (matcher, messenger) — no project-config lookup.
+     *     @type array|\Google\Protobuf\Internal\MapField $prop_types
+     *           Per-key data-type hints for the (already-normalized) properties JSON,
+     *           produced by the same catalog lookup the enricher used to coerce this
+     *           event (docs/34). Maps property key → one of "s" (string), "n" (number),
+     *           "b" (boolean), "d" (datetime), "l" (list). writer-ch reads these to route
+     *           each value into the typed ClickHouse maps without a catalog of its own
+     *           (avoiding a second read that could disagree across the 30s cache refresh),
+     *           and it disambiguates datetime, which is indistinguishable from string in
+     *           JSON. This is a hint map inside the enrichment meta, NOT a typing of
+     *           `properties` itself (rule 1): the letter stays opaque JSON; the envelope
+     *           just carries the enricher's verdict. Keys absent from the map (or whose
+     *           value was incoercible) are left in `properties` only.
      * }
      */
     public function __construct($data = NULL) {
@@ -179,6 +207,52 @@ class EnrichmentMeta extends \Google\Protobuf\Internal\Message
     {
         GPBUtil::checkEnum($var, \Events\V1\VerificationMode::class);
         $this->verification_mode = $var;
+
+        return $this;
+    }
+
+    /**
+     * Per-key data-type hints for the (already-normalized) properties JSON,
+     * produced by the same catalog lookup the enricher used to coerce this
+     * event (docs/34). Maps property key → one of "s" (string), "n" (number),
+     * "b" (boolean), "d" (datetime), "l" (list). writer-ch reads these to route
+     * each value into the typed ClickHouse maps without a catalog of its own
+     * (avoiding a second read that could disagree across the 30s cache refresh),
+     * and it disambiguates datetime, which is indistinguishable from string in
+     * JSON. This is a hint map inside the enrichment meta, NOT a typing of
+     * `properties` itself (rule 1): the letter stays opaque JSON; the envelope
+     * just carries the enricher's verdict. Keys absent from the map (or whose
+     * value was incoercible) are left in `properties` only.
+     *
+     * Generated from protobuf field <code>map<string, string> prop_types = 5 [json_name = "propTypes"];</code>
+     * @return \Google\Protobuf\Internal\MapField
+     */
+    public function getPropTypes()
+    {
+        return $this->prop_types;
+    }
+
+    /**
+     * Per-key data-type hints for the (already-normalized) properties JSON,
+     * produced by the same catalog lookup the enricher used to coerce this
+     * event (docs/34). Maps property key → one of "s" (string), "n" (number),
+     * "b" (boolean), "d" (datetime), "l" (list). writer-ch reads these to route
+     * each value into the typed ClickHouse maps without a catalog of its own
+     * (avoiding a second read that could disagree across the 30s cache refresh),
+     * and it disambiguates datetime, which is indistinguishable from string in
+     * JSON. This is a hint map inside the enrichment meta, NOT a typing of
+     * `properties` itself (rule 1): the letter stays opaque JSON; the envelope
+     * just carries the enricher's verdict. Keys absent from the map (or whose
+     * value was incoercible) are left in `properties` only.
+     *
+     * Generated from protobuf field <code>map<string, string> prop_types = 5 [json_name = "propTypes"];</code>
+     * @param array|\Google\Protobuf\Internal\MapField $var
+     * @return $this
+     */
+    public function setPropTypes(array|\Google\Protobuf\Internal\MapField $var)
+    {
+        $arr = GPBUtil::checkMapField($var, \Google\Protobuf\Internal\GPBType::STRING, \Google\Protobuf\Internal\GPBType::STRING);
+        $this->prop_types = $arr;
 
         return $this;
     }
