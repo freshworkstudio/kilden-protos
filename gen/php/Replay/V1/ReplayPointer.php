@@ -82,6 +82,15 @@ class ReplayPointer extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>string recording_id = 12 [json_name = "recordingId"];</code>
      */
     protected $recording_id = '';
+    /**
+     * Recording platform: "ios" | "android" for mobile screenshot-slideshow
+     * recordings (docs/todos expo-2), empty for web SDKs (which predate the
+     * field and never send it). capture-rrweb validates the value against an
+     * allowlist before it reaches the pointer.
+     *
+     * Generated from protobuf field <code>string platform = 13 [json_name = "platform"];</code>
+     */
+    protected $platform = '';
 
     /**
      * Constructor.
@@ -112,6 +121,11 @@ class ReplayPointer extends \Google\Protobuf\Internal\Message
      *           survives reloads for up to 30 minutes of inactivity — so without this id
      *           a later recording of the same session would collide with (and overwrite)
      *           the earlier one's chunks. Empty on pointers from pre-recording_id SDKs.
+     *     @type string $platform
+     *           Recording platform: "ios" | "android" for mobile screenshot-slideshow
+     *           recordings (docs/todos expo-2), empty for web SDKs (which predate the
+     *           field and never send it). capture-rrweb validates the value against an
+     *           allowlist before it reaches the pointer.
      * }
      */
     public function __construct($data = NULL) {
@@ -428,6 +442,38 @@ class ReplayPointer extends \Google\Protobuf\Internal\Message
     {
         GPBUtil::checkString($var, true);
         $this->recording_id = $var;
+
+        return $this;
+    }
+
+    /**
+     * Recording platform: "ios" | "android" for mobile screenshot-slideshow
+     * recordings (docs/todos expo-2), empty for web SDKs (which predate the
+     * field and never send it). capture-rrweb validates the value against an
+     * allowlist before it reaches the pointer.
+     *
+     * Generated from protobuf field <code>string platform = 13 [json_name = "platform"];</code>
+     * @return string
+     */
+    public function getPlatform()
+    {
+        return $this->platform;
+    }
+
+    /**
+     * Recording platform: "ios" | "android" for mobile screenshot-slideshow
+     * recordings (docs/todos expo-2), empty for web SDKs (which predate the
+     * field and never send it). capture-rrweb validates the value against an
+     * allowlist before it reaches the pointer.
+     *
+     * Generated from protobuf field <code>string platform = 13 [json_name = "platform"];</code>
+     * @param string $var
+     * @return $this
+     */
+    public function setPlatform(string $var)
+    {
+        GPBUtil::checkString($var, true);
+        $this->platform = $var;
 
         return $this;
     }

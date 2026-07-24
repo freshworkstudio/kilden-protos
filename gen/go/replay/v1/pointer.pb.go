@@ -48,7 +48,12 @@ type ReplayPointer struct {
 	// survives reloads for up to 30 minutes of inactivity — so without this id
 	// a later recording of the same session would collide with (and overwrite)
 	// the earlier one's chunks. Empty on pointers from pre-recording_id SDKs.
-	RecordingId   string `protobuf:"bytes,12,opt,name=recording_id,json=recordingId,proto3" json:"recording_id,omitempty"`
+	RecordingId string `protobuf:"bytes,12,opt,name=recording_id,json=recordingId,proto3" json:"recording_id,omitempty"`
+	// Recording platform: "ios" | "android" for mobile screenshot-slideshow
+	// recordings (docs/todos expo-2), empty for web SDKs (which predate the
+	// field and never send it). capture-rrweb validates the value against an
+	// allowlist before it reaches the pointer.
+	Platform      string `protobuf:"bytes,13,opt,name=platform,proto3" json:"platform,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -167,11 +172,18 @@ func (x *ReplayPointer) GetRecordingId() string {
 	return ""
 }
 
+func (x *ReplayPointer) GetPlatform() string {
+	if x != nil {
+		return x.Platform
+	}
+	return ""
+}
+
 var File_replay_v1_pointer_proto protoreflect.FileDescriptor
 
 const file_replay_v1_pointer_proto_rawDesc = "" +
 	"\n" +
-	"\x17replay/v1/pointer.proto\x12\treplay.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc5\x03\n" +
+	"\x17replay/v1/pointer.proto\x12\treplay.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe1\x03\n" +
 	"\rReplayPointer\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -190,7 +202,8 @@ const file_replay_v1_pointer_proto_rawDesc = "" +
 	"\bpage_url\x18\n" +
 	" \x01(\tR\apageUrl\x12\x1b\n" +
 	"\thas_error\x18\v \x01(\bR\bhasError\x12!\n" +
-	"\frecording_id\x18\f \x01(\tR\vrecordingIdBDZBgithub.com/freshworkstudio/kilden-protos/gen/go/replay/v1;replayv1b\x06proto3"
+	"\frecording_id\x18\f \x01(\tR\vrecordingId\x12\x1a\n" +
+	"\bplatform\x18\r \x01(\tR\bplatformBDZBgithub.com/freshworkstudio/kilden-protos/gen/go/replay/v1;replayv1b\x06proto3"
 
 var (
 	file_replay_v1_pointer_proto_rawDescOnce sync.Once
