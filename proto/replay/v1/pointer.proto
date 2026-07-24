@@ -36,4 +36,10 @@ message ReplayPointer {
   // a later recording of the same session would collide with (and overwrite)
   // the earlier one's chunks. Empty on pointers from pre-recording_id SDKs.
   string recording_id = 12;
+
+  // Recording platform: "ios" | "android" for mobile screenshot-slideshow
+  // recordings (docs/todos expo-2), empty for web SDKs (which predate the
+  // field and never send it). capture-rrweb validates the value against an
+  // allowlist before it reaches the pointer.
+  string platform = 13;
 }
