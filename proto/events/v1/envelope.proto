@@ -93,6 +93,22 @@ message EnrichmentMeta {
   // the envelope just carries the enricher's verdict. Keys absent from the
   // map (or whose value was incoercible) are left in `properties` only.
   map<string, string> prop_types = 5;
+
+  // Groups this event happened in (docs/34 phase 5). Maps the group TYPE key
+  // — "company", "workspace" — to the group's Kilden UUID, resolved by the
+  // enricher from the `$groups` super property the SDK stamps on every event.
+  //
+  // The event freezes the context it happened in: writer-ch copies this into
+  // the `group_ids` ClickHouse column so "Acme's funnel" is a columnar filter,
+  // and a person who later leaves Acme does not rewrite the history of what
+  // they did while they were there. That is the PostHog half of the hybrid;
+  // the durable "who belongs to Acme right now" lives in Postgres edges the
+  // enricher maintains in the same pass, and never in this field.
+  //
+  // Resolution happens once, in the enricher, for the same reason prop_types
+  // exists: the id is stamped on the envelope so no downstream consumer needs
+  // a lookup of its own that could disagree.
+  map<string, string> group_ids = 6;
 }
 
 enum VerificationMode {
