@@ -362,7 +362,22 @@ type EnrichmentMeta struct {
 	// `properties` itself (rule 1): the `properties` field stays opaque JSON;
 	// the envelope just carries the enricher's verdict. Keys absent from the
 	// map (or whose value was incoercible) are left in `properties` only.
-	PropTypes     map[string]string `protobuf:"bytes,5,rep,name=prop_types,json=propTypes,proto3" json:"prop_types,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	PropTypes map[string]string `protobuf:"bytes,5,rep,name=prop_types,json=propTypes,proto3" json:"prop_types,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Groups this event happened in (docs/34 phase 5). Maps the group TYPE key
+	// — "company", "workspace" — to the group's Kilden UUID, resolved by the
+	// enricher from the `$groups` super property the SDK stamps on every event.
+	//
+	// The event freezes the context it happened in: writer-ch copies this into
+	// the `group_ids` ClickHouse column so "Acme's funnel" is a columnar filter,
+	// and a person who later leaves Acme does not rewrite the history of what
+	// they did while they were there. That is the PostHog half of the hybrid;
+	// the durable "who belongs to Acme right now" lives in Postgres edges the
+	// enricher maintains in the same pass, and never in this field.
+	//
+	// Resolution happens once, in the enricher, for the same reason prop_types
+	// exists: the id is stamped on the envelope so no downstream consumer needs
+	// a lookup of its own that could disagree.
+	GroupIds      map[string]string `protobuf:"bytes,6,rep,name=group_ids,json=groupIds,proto3" json:"group_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -428,6 +443,13 @@ func (x *EnrichmentMeta) GetVerificationMode() VerificationMode {
 func (x *EnrichmentMeta) GetPropTypes() map[string]string {
 	if x != nil {
 		return x.PropTypes
+	}
+	return nil
+}
+
+func (x *EnrichmentMeta) GetGroupIds() map[string]string {
+	if x != nil {
+		return x.GroupIds
 	}
 	return nil
 }
@@ -605,15 +627,19 @@ const file_events_v1_envelope_proto_rawDesc = "" +
 	"\x0eidentity_token\x18\n" +
 	" \x01(\tR\ridentityToken\x12.\n" +
 	"\x06source\x18\v \x01(\x0e2\x16.events.v1.EventSourceR\x06source\x12\x0e\n" +
-	"\x02ip\x18\f \x01(\tR\x02ip\"\xca\x02\n" +
+	"\x02ip\x18\f \x01(\tR\x02ip\"\xcd\x03\n" +
 	"\x0eEnrichmentMeta\x12 \n" +
 	"\x03geo\x18\x01 \x01(\v2\x0e.events.v1.GeoR\x03geo\x12)\n" +
 	"\x06device\x18\x02 \x01(\v2\x11.events.v1.DeviceR\x06device\x12\x1a\n" +
 	"\bverified\x18\x03 \x01(\bR\bverified\x12H\n" +
 	"\x11verification_mode\x18\x04 \x01(\x0e2\x1b.events.v1.VerificationModeR\x10verificationMode\x12G\n" +
 	"\n" +
-	"prop_types\x18\x05 \x03(\v2(.events.v1.EnrichmentMeta.PropTypesEntryR\tpropTypes\x1a<\n" +
+	"prop_types\x18\x05 \x03(\v2(.events.v1.EnrichmentMeta.PropTypesEntryR\tpropTypes\x12D\n" +
+	"\tgroup_ids\x18\x06 \x03(\v2'.events.v1.EnrichmentMeta.GroupIdsEntryR\bgroupIds\x1a<\n" +
 	"\x0ePropTypesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a;\n" +
+	"\rGroupIdsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"q\n" +
 	"\x03Geo\x12!\n" +
@@ -658,7 +684,7 @@ func file_events_v1_envelope_proto_rawDescGZIP() []byte {
 }
 
 var file_events_v1_envelope_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_events_v1_envelope_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_events_v1_envelope_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_events_v1_envelope_proto_goTypes = []any{
 	(EventSource)(0),              // 0: events.v1.EventSource
 	(VerificationMode)(0),         // 1: events.v1.VerificationMode
@@ -668,23 +694,25 @@ var file_events_v1_envelope_proto_goTypes = []any{
 	(*Geo)(nil),                   // 5: events.v1.Geo
 	(*Device)(nil),                // 6: events.v1.Device
 	nil,                           // 7: events.v1.EnrichmentMeta.PropTypesEntry
-	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
+	nil,                           // 8: events.v1.EnrichmentMeta.GroupIdsEntry
+	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
 }
 var file_events_v1_envelope_proto_depIdxs = []int32{
-	8, // 0: events.v1.Envelope.timestamp:type_name -> google.protobuf.Timestamp
-	8, // 1: events.v1.Envelope.received_at:type_name -> google.protobuf.Timestamp
-	4, // 2: events.v1.Envelope.enrichment:type_name -> events.v1.EnrichmentMeta
-	0, // 3: events.v1.Envelope.source:type_name -> events.v1.EventSource
-	5, // 4: events.v1.EnrichmentMeta.geo:type_name -> events.v1.Geo
-	6, // 5: events.v1.EnrichmentMeta.device:type_name -> events.v1.Device
-	1, // 6: events.v1.EnrichmentMeta.verification_mode:type_name -> events.v1.VerificationMode
-	7, // 7: events.v1.EnrichmentMeta.prop_types:type_name -> events.v1.EnrichmentMeta.PropTypesEntry
-	2, // 8: events.v1.Device.type:type_name -> events.v1.DeviceType
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	9,  // 0: events.v1.Envelope.timestamp:type_name -> google.protobuf.Timestamp
+	9,  // 1: events.v1.Envelope.received_at:type_name -> google.protobuf.Timestamp
+	4,  // 2: events.v1.Envelope.enrichment:type_name -> events.v1.EnrichmentMeta
+	0,  // 3: events.v1.Envelope.source:type_name -> events.v1.EventSource
+	5,  // 4: events.v1.EnrichmentMeta.geo:type_name -> events.v1.Geo
+	6,  // 5: events.v1.EnrichmentMeta.device:type_name -> events.v1.Device
+	1,  // 6: events.v1.EnrichmentMeta.verification_mode:type_name -> events.v1.VerificationMode
+	7,  // 7: events.v1.EnrichmentMeta.prop_types:type_name -> events.v1.EnrichmentMeta.PropTypesEntry
+	8,  // 8: events.v1.EnrichmentMeta.group_ids:type_name -> events.v1.EnrichmentMeta.GroupIdsEntry
+	2,  // 9: events.v1.Device.type:type_name -> events.v1.DeviceType
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_events_v1_envelope_proto_init() }
@@ -698,7 +726,7 @@ func file_events_v1_envelope_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_events_v1_envelope_proto_rawDesc), len(file_events_v1_envelope_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

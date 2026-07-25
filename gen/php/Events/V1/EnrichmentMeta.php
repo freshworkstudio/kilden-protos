@@ -54,6 +54,23 @@ class EnrichmentMeta extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>map<string, string> prop_types = 5 [json_name = "propTypes"];</code>
      */
     private $prop_types;
+    /**
+     * Groups this event happened in (docs/34 phase 5). Maps the group TYPE key
+     * — "company", "workspace" — to the group's Kilden UUID, resolved by the
+     * enricher from the `$groups` super property the SDK stamps on every event.
+     * The event freezes the context it happened in: writer-ch copies this into
+     * the `group_ids` ClickHouse column so "Acme's funnel" is a columnar filter,
+     * and a person who later leaves Acme does not rewrite the history of what
+     * they did while they were there. That is the PostHog half of the hybrid;
+     * the durable "who belongs to Acme right now" lives in Postgres edges the
+     * enricher maintains in the same pass, and never in this field.
+     * Resolution happens once, in the enricher, for the same reason prop_types
+     * exists: the id is stamped on the envelope so no downstream consumer needs
+     * a lookup of its own that could disagree.
+     *
+     * Generated from protobuf field <code>map<string, string> group_ids = 6 [json_name = "groupIds"];</code>
+     */
+    private $group_ids;
 
     /**
      * Constructor.
@@ -83,6 +100,19 @@ class EnrichmentMeta extends \Google\Protobuf\Internal\Message
      *           `properties` itself (rule 1): the `properties` field stays opaque JSON;
      *           the envelope just carries the enricher's verdict. Keys absent from the
      *           map (or whose value was incoercible) are left in `properties` only.
+     *     @type array|\Google\Protobuf\Internal\MapField $group_ids
+     *           Groups this event happened in (docs/34 phase 5). Maps the group TYPE key
+     *           — "company", "workspace" — to the group's Kilden UUID, resolved by the
+     *           enricher from the `$groups` super property the SDK stamps on every event.
+     *           The event freezes the context it happened in: writer-ch copies this into
+     *           the `group_ids` ClickHouse column so "Acme's funnel" is a columnar filter,
+     *           and a person who later leaves Acme does not rewrite the history of what
+     *           they did while they were there. That is the PostHog half of the hybrid;
+     *           the durable "who belongs to Acme right now" lives in Postgres edges the
+     *           enricher maintains in the same pass, and never in this field.
+     *           Resolution happens once, in the enricher, for the same reason prop_types
+     *           exists: the id is stamped on the envelope so no downstream consumer needs
+     *           a lookup of its own that could disagree.
      * }
      */
     public function __construct($data = NULL) {
@@ -253,6 +283,54 @@ class EnrichmentMeta extends \Google\Protobuf\Internal\Message
     {
         $arr = GPBUtil::checkMapField($var, \Google\Protobuf\Internal\GPBType::STRING, \Google\Protobuf\Internal\GPBType::STRING);
         $this->prop_types = $arr;
+
+        return $this;
+    }
+
+    /**
+     * Groups this event happened in (docs/34 phase 5). Maps the group TYPE key
+     * — "company", "workspace" — to the group's Kilden UUID, resolved by the
+     * enricher from the `$groups` super property the SDK stamps on every event.
+     * The event freezes the context it happened in: writer-ch copies this into
+     * the `group_ids` ClickHouse column so "Acme's funnel" is a columnar filter,
+     * and a person who later leaves Acme does not rewrite the history of what
+     * they did while they were there. That is the PostHog half of the hybrid;
+     * the durable "who belongs to Acme right now" lives in Postgres edges the
+     * enricher maintains in the same pass, and never in this field.
+     * Resolution happens once, in the enricher, for the same reason prop_types
+     * exists: the id is stamped on the envelope so no downstream consumer needs
+     * a lookup of its own that could disagree.
+     *
+     * Generated from protobuf field <code>map<string, string> group_ids = 6 [json_name = "groupIds"];</code>
+     * @return \Google\Protobuf\Internal\MapField
+     */
+    public function getGroupIds()
+    {
+        return $this->group_ids;
+    }
+
+    /**
+     * Groups this event happened in (docs/34 phase 5). Maps the group TYPE key
+     * — "company", "workspace" — to the group's Kilden UUID, resolved by the
+     * enricher from the `$groups` super property the SDK stamps on every event.
+     * The event freezes the context it happened in: writer-ch copies this into
+     * the `group_ids` ClickHouse column so "Acme's funnel" is a columnar filter,
+     * and a person who later leaves Acme does not rewrite the history of what
+     * they did while they were there. That is the PostHog half of the hybrid;
+     * the durable "who belongs to Acme right now" lives in Postgres edges the
+     * enricher maintains in the same pass, and never in this field.
+     * Resolution happens once, in the enricher, for the same reason prop_types
+     * exists: the id is stamped on the envelope so no downstream consumer needs
+     * a lookup of its own that could disagree.
+     *
+     * Generated from protobuf field <code>map<string, string> group_ids = 6 [json_name = "groupIds"];</code>
+     * @param array|\Google\Protobuf\Internal\MapField $var
+     * @return $this
+     */
+    public function setGroupIds(array|\Google\Protobuf\Internal\MapField $var)
+    {
+        $arr = GPBUtil::checkMapField($var, \Google\Protobuf\Internal\GPBType::STRING, \Google\Protobuf\Internal\GPBType::STRING);
+        $this->group_ids = $arr;
 
         return $this;
     }

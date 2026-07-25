@@ -14,8 +14,13 @@ Reglas propias de este repo:
    (`events.v2`) y migración explícita, no edición in-place.
 4. Enums siempre con valor `_UNSPECIFIED = 0` y prefijo del nombre del enum
    (lint STANDARD de buf lo exige).
-5. `gen/` es artefacto de build (gitignoreado); los consumidores corren
-   `make generate` o consumen vía BSR si algún día se publica.
+5. **`gen/` SE COMMITEA.** Los consumidores (kilden-core por `replace` a
+   `gen/go`, el panel por `gen/php`) y su CI lo usan tal cual, sin la
+   toolchain de buf: el CI de kilden-core clona este repo y compila contra
+   `gen/go` directamente. Todo cambio a un `.proto` va con su
+   `make generate` **en el mismo commit** — si no, el repo mergea verde y el
+   build de core se cae con "has no field or method X" (pasó con `group_ids`,
+   PR #9).
 6. PII: la IP no viaja en el envelope; solo la Geo derivada. Mantenerlo así
    salvo decisión explícita documentada en ../docs/.
 7. Idioma: comentarios en los .proto y mensajes de commit en INGLÉS; este
