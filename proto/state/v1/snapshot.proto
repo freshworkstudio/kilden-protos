@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package state.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/freshworkstudio/kilden-protos/gen/go/state/v1;statev1";
+
+// Snapshots of MUTABLE state (docs/34 phase 6). Events are immutable and
+// travel as an Envelope; persons and groups change, and these are how a
+// change reaches the query store.
+//
+// The topics persons_changes / groups_changes carry these, keyed by person_id
+// / group_id, and writer-ch writes them into the ClickHouse projections
+// persons_current / groups_current (ReplacingMergeTree(version, is_deleted)).
+//
+// Postgres remains the source of truth. A snapshot is a projection of a row
+// as it stood after one mutation, never an instruction to apply a delta:
+// at-least-once redelivery of a full snapshot is idempotent, a delta is not.
+
+// PersonSnapshot is a person's state after a mutation of its traits or
+// identity — or its tombstone.
+message PersonSnapshot {
+  string project_id = 1;
+  string person_id = 2;
+
+  // persons.version from Postgres, the ReplacingMergeTree ordering key.
+  //
+  // It comes from the row's own UPDATE and never from a counter in the
+  // enricher: two distinct_ids of the same person land in different
+  // partitions of events_raw, so two replicas can mutate the same person
+  // concurrently and only the database's bump is globally monotonic. Each
+  // replica emits its snapshot; the highest version wins.
+  uint64 version = 3;
+
+  // Tombstone: the losing side of a merge, or a GDPR erasure. Carries a
+  // bumped version so it wins over the state it replaces.
+  bool is_deleted = 4;
+
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp last_active_at = 6;
+
+  // Has at least one non-anonymous distinct_id (docs/04 / qa-7).
+  bool identified = 7;
+
+  // The person's traits, as opaque JSON — the same contract as
+  // Envelope.properties (decision 6). Already normalized by the enricher.
+  string properties = 8;
+
+  // Per-key data-type hints for `properties`, exactly as
+  // EnrichmentMeta.prop_types does for an event: writer-ch routes each value
+  // into the typed ClickHouse maps without a catalog of its own.
+  map<string, string> prop_types = 9;
+}
+
+// GroupSnapshot is the group mirror of PersonSnapshot.
+message GroupSnapshot {
+  string project_id = 1;
+
+  // The WIRE key of the type ("company"), not its id: the projection is read
+  // by queries that say "company", and the display name is the panel's to
+  // change at any time.
+  string group_type_key = 2;
+
+  string group_id = 3;
+
+  // The customer's own id for the group ("acme").
+  string external_id = 4;
+
+  uint64 version = 5;
+  bool is_deleted = 6;
+
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp last_active_at = 8;
+
+  string properties = 9;
+  map<string, string> prop_types = 10;
+}
